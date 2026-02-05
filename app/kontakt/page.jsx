@@ -1,5 +1,6 @@
 import Image from "next/image";
 import ContactForm from "./ContactForm";
+import { Suspense } from "react";
 
 export default function KontaktPage() {
     return (
@@ -68,7 +69,9 @@ export default function KontaktPage() {
                         </p>
 
                         <div className="mt-8">
-                            <ContactForm />
+                            <Suspense fallback={<div className="text-sm text-black/60">Lade Formular…</div>}>
+                                <ContactForm />
+                            </Suspense>
                         </div>
                     </div>
                 </div>
