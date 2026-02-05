@@ -1,21 +1,21 @@
-import Hero from "@/components/hero/Hero";
+import SmallHero from "@/components/hero/SmallHero";
 import { sanityClient } from "@/client";
-import { HOME_PAGE_QUERY } from "@/queries";
+import { LONGEVITY_PAGE_QUERY } from "@/queries";
 import IconGridSection from "@/sections/IconGridSection";
 import TextImageSection from "@/sections/TextImageSection";
 import CtaSection from "@/sections/CtaSection";
 import WaysSection from "@/sections/WaysSection";
 import DecoImageSection from "@/sections/DecoImageSection";
 import TestimonialsSection from "@/sections/TestimonialsSection";
-import BlogSection from "@/sections/BlogSection";
+import BenefitsSection from "@/sections/BenefitsSection";
+import ProgrammAblaufSection from "@/sections/ProgrammAblaufSection";
 
 export const revalidate = 60;
 
 export default async function Page() {
-    const data = await sanityClient.fetch(HOME_PAGE_QUERY);
+    const data = await sanityClient.fetch(LONGEVITY_PAGE_QUERY);
 
     console.log(data);
-    console.log(data.blogSection.posts);
 
     if (!data) {
         return (
@@ -28,21 +28,18 @@ export default async function Page() {
 
     return (
         <main>
-            <Hero hero={data.hero} />
+            {/* <SmallHero hero={data.hero} /> */}
+            <TextImageSection data={data.introSection} />
             <div className="h-12"></div>
+            <ProgrammAblaufSection data={data.programmAblauf} />
+            <BenefitsSection data={data.benefits} />
+            <div className="h-12"></div>
+
+            <TextImageSection data={data.geignet} />
+            <BenefitsSection data={data.teilnahme} />
+
             <IconGridSection data={data.iconGridRef?.iconGrid} />
-            <TextImageSection data={data.aboutTeaser} />
             <CtaSection data={data.cta} />
-            {data?.waysSection ? <WaysSection data={data.waysSection} /> : null}
-            <div className="relative z-10">
-                <DecoImageSection data={data?.decoImage} />
-            </div>
-            {data?.testimonials ? <TestimonialsSection data={data.testimonials} /> : null}
-            <BlogSection data={data?.blogSection} />
-            <div className="h-12"></div>
-
-            <TextImageSection data={data.bereitSection} />
-
             {/* weitere Sections später */}
         </main>
     );

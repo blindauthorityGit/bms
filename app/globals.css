@@ -1,8 +1,110 @@
+
 @import "tailwindcss";
+
+
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+@layer utilities {
+  @media (min-width: 96rem) { /* Tailwind 2xl Breakpoint default */
+    .container {
+      max-width: 88rem; /* 1440px */
+    }
+  }
+}
+
+@theme {
+  --font-headline: "source-serif-pro", "serif";
+  --font-body: "source-sans-pro", "sans-serif";
+  --breakpoint-3xl: 1920px;
+
+  --container-2xl: 90rem; /* 1440px = 90rem */
+
+  /* ============================
+     Basis Farben für Text und Hintegrund
+     (Palette aus Bild 1, Reihe 1)
+  ============================= */
+--color-background: #E2DADB;
+
+--color-text: #242325;
+
+
+
+  /* ============================
+     PRIMARY – Forest Green
+     (Palette aus Bild 1, Reihe 1)
+  ============================= */
+--color-primary-50: #fef2f3;
+--color-primary-100: #ffe1e3;
+--color-primary-200: #ffc8cc;
+--color-primary-300: #ffa2a9;
+--color-primary-400: #fd6c76;
+--color-primary-500: #f53e4b;
+--color-primary-600: #e31f2d;
+--color-primary-700: #be1622;
+--color-primary-800: #9e1620;
+--color-primary-900: #831921;
+--color-primary-950: #47080c;
+
+  /* Brand Default */
+  --color-primary: #BE1622;
+
+  /* ============================
+     SECONDARY – Saffron
+     (Palette aus Bild 1, Reihe 2)
+  ============================= */
+--color-saffron-50: #fcfaea;
+--color-saffron-100: #faf2c7;
+--color-saffron-200: #f5e493;
+--color-saffron-300: #efcf55;
+--color-saffron-400: #ebbf3c;
+--color-saffron-500: #d9a019;
+--color-saffron-600: #bb7d13;
+--color-saffron-700: #955913;
+--color-saffron-800: #7c4717;
+--color-saffron-900: #6a3b19;
+--color-saffron-950: #3d1e0b;
+
+
+  /* Brand Default */
+  --color-saffron: #d9a019;
+
+  /* ============================
+     SECONDARY – Delft Blue
+     (Palette aus Bild 1, Reihe 3)
+  ============================= */
+  --color-delft-50:  #F3F4FB;
+  --color-delft-100: #E3E6F6;
+  --color-delft-200: #CDD5F0;
+  --color-delft-300: #ABB8E5;
+  --color-delft-400: #8395D7;
+  --color-delft-500: #6674CB;
+  --color-delft-600: #535BBD;
+  --color-delft-700: #484AAD;
+  --color-delft-800: #3F3F8E;
+  --color-delft-900: #2F3061;
+  --color-delft-950: #252546;
+
+  /* Brand Default */
+  --color-delft: #2F3061;
+
+  /* ============================
+     NEUTRALFARBEN
+  ============================= */
+
+  /* Off White */
+  --color-offwhite: #FFFFF8;
+
+  /* Deep Forest */
+  --color-deepforest: #101014;
+
+  /* --app-header-h: 61px; */
+    --app-header-h: 0px;
+
+
 }
 
 @theme inline {
@@ -12,15 +114,25 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+
+
+
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* background: var(--background);
+  color: var(--foreground); */
+  font-family: source-sans-pro, Helvetica, sans-serif;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-container path:focus {
+  outline: none !important;
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
 }
