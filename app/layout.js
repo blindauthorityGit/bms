@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="en">
+        <html lang="de">
             <head>
                 <link rel="stylesheet" href="https://use.typekit.net/fcp8bju.css" />{" "}
             </head>
