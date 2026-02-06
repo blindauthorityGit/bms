@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { sanityClient } from "@/client";
+import { AnimatePresence, motion } from "framer-motion";
 
 const ANLIEGEN = [
     { key: "schmerztherapie", label: "Schmerztherapie nach Liebscher & Bracht" },
@@ -22,9 +23,7 @@ const EVENTS_FOR_CONTACT_QUERY = `
   title,
   "slug": slug.current,
   "categoryTitle": category->title,
-  "nextDate": dates[defined(start)] | order(start asc)[0]{
-    start
-  }
+  "nextDate": dates[defined(start)] | order(start asc)[0]{ start }
 }
 `;
 
@@ -40,7 +39,54 @@ function sanitizeEventSlug(value) {
     return String(value).trim();
 }
 
-function Input({ label, name, value, onChange, placeholder, required = false }) {
+function Spinner({ className = "" }) {
+    return (
+        <span
+            className={[
+                "inline-block h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin",
+                className,
+            ].join(" ")}
+            aria-hidden="true"
+        />
+    );
+}
+
+function Notice({ type = "success", title, children, onClose }) {
+    const styles =
+        type === "success"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+            : "border-red-200 bg-red-50 text-red-950";
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: -10, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(6px)" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className={`rounded-2xl border p-4 md:p-5 ${styles}`}
+        >
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    {title ? <div className="font-semibold">{title}</div> : null}
+                    {children ? <div className="mt-1 text-sm opacity-90">{children}</div> : null}
+                </div>
+                {onClose ? (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="shrink-0 rounded-lg px-2 py-1 text-sm hover:bg-black/5"
+                        aria-label="Hinweis schließen"
+                    >
+                        ✕
+                    </button>
+                ) : null}
+            </div>
+        </motion.div>
+    );
+}
+
+function Input({ label, name, value, onChange, placeholder, required = false, disabled = false }) {
     return (
         <label className="block">
             <span className="block text-sm font-medium text-black/80">
@@ -48,18 +94,19 @@ function Input({ label, name, value, onChange, placeholder, required = false }) 
                 {required ? "*" : ""}
             </span>
             <input
-                className="mt-2 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30"
+                className="mt-2 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30 disabled:opacity-60"
                 name={name}
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
                 required={required}
+                disabled={disabled}
             />
         </label>
     );
 }
 
-function Select({ label, name, value, onChange, children, required = false }) {
+function Select({ label, name, value, onChange, children, required = false, disabled = false }) {
     return (
         <label className="block">
             <span className="block text-sm font-medium text-black/80">
@@ -67,11 +114,12 @@ function Select({ label, name, value, onChange, children, required = false }) {
                 {required ? "*" : ""}
             </span>
             <select
-                className="mt-2 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30"
+                className="mt-2 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30 disabled:opacity-60"
                 name={name}
                 value={value}
                 onChange={onChange}
                 required={required}
+                disabled={disabled}
             >
                 {children}
             </select>
@@ -79,7 +127,7 @@ function Select({ label, name, value, onChange, children, required = false }) {
     );
 }
 
-function Textarea({ label, name, value, onChange, placeholder, required = false }) {
+function Textarea({ label, name, value, onChange, placeholder, required = false, disabled = false }) {
     return (
         <label className="block">
             <span className="block text-sm font-medium text-black/80">
@@ -87,18 +135,19 @@ function Textarea({ label, name, value, onChange, placeholder, required = false 
                 {required ? "*" : ""}
             </span>
             <textarea
-                className="mt-2 w-full min-h-[140px] rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30"
+                className="mt-2 w-full min-h-[140px] rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-black/30 disabled:opacity-60"
                 name={name}
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
                 required={required}
+                disabled={disabled}
             />
         </label>
     );
 }
 
-// Welche Zusatzfelder sollen bei welchem Anliegen auftauchen?
+// Zusatzfelder je Anliegen
 const FIELDS_BY_ANLIEGEN = {
     schmerztherapie: [
         { name: "beschwerden", label: "Beschwerden / Schmerzbild", type: "text" },
@@ -118,7 +167,6 @@ const FIELDS_BY_ANLIEGEN = {
         { name: "zeiten", label: "Wochentage / Uhrzeiten", type: "text" },
     ],
     "workshops-events-specials": [
-        // workshop/event kommt jetzt als dropdown (Sanity) → nicht mehr als Textfeld
         { name: "personen", label: "Teilnehmerzahl (optional)", type: "text" },
         { name: "termin", label: "Termin / Zeitraum", type: "text" },
     ],
@@ -157,7 +205,7 @@ export default function ContactForm() {
     const [eventsLoading, setEventsLoading] = useState(false);
     const [eventsError, setEventsError] = useState("");
 
-    // Dropdown selection (slug)
+    // Dropdown selection
     const [selectedEvent, setSelectedEvent] = useState(initialEventSlug);
 
     const [form, setForm] = useState({
@@ -169,8 +217,42 @@ export default function ContactForm() {
         verfuegbarkeit: "",
         consent: false,
         newsletter: false,
-        // dynamische Felder landen ebenfalls hier
     });
+
+    // UI submit states
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
+    const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [buttonMode, setButtonMode] = useState("idle"); // idle | sending | sent
+
+    const noticeRef = useRef(null);
+    const hideSuccessTimer = useRef(null);
+    const resetButtonTimer = useRef(null);
+
+    function clearTimers() {
+        if (hideSuccessTimer.current) clearTimeout(hideSuccessTimer.current);
+        if (resetButtonTimer.current) clearTimeout(resetButtonTimer.current);
+        hideSuccessTimer.current = null;
+        resetButtonTimer.current = null;
+    }
+
+    useEffect(() => {
+        return () => clearTimers();
+    }, []);
+
+    function resetNotices() {
+        clearTimers();
+        setSubmitError("");
+        setSubmitSuccess(false);
+    }
+
+    function scrollToNotice() {
+        // nur wenn vorhanden + smooth
+        requestAnimationFrame(() => {
+            if (!noticeRef.current) return;
+            noticeRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    }
 
     // Helper: URL params update
     function replaceQuery(next) {
@@ -183,13 +265,13 @@ export default function ContactForm() {
         router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }
 
-    // Wenn URL sich ändert: Anliegen übernehmen
+    // URL -> Anliegen
     useEffect(() => {
         const next = sanitizeAnliegen(queryAnliegen);
         setAnliegen(next);
     }, [queryAnliegen]);
 
-    // Wenn URL sich ändert: event übernehmen (nur wenn Anliegen passt)
+    // URL -> Event (nur bei passendem Anliegen)
     useEffect(() => {
         const nextEvent = sanitizeEventSlug(queryEvent);
         if (sanitizeAnliegen(queryAnliegen) === "workshops-events-specials") {
@@ -197,7 +279,7 @@ export default function ContactForm() {
         }
     }, [queryEvent, queryAnliegen]);
 
-    // Lazy fetch events, sobald Anliegen = Workshops
+    // Lazy fetch events
     useEffect(() => {
         let alive = true;
 
@@ -207,7 +289,6 @@ export default function ContactForm() {
             try {
                 const res = await sanityClient.fetch(EVENTS_FOR_CONTACT_QUERY);
                 if (!alive) return;
-                console.log(res);
                 setEvents(Array.isArray(res) ? res : []);
             } catch (e) {
                 if (!alive) return;
@@ -219,10 +300,8 @@ export default function ContactForm() {
         }
 
         if (anliegen === "workshops-events-specials") {
-            // nur einmal laden, wenn leer
             if (!events.length && !eventsLoading) loadEvents();
         } else {
-            // wenn wegwechseln: selection/param entfernen
             setSelectedEvent("");
             replaceQuery({ event: "" });
         }
@@ -235,8 +314,8 @@ export default function ContactForm() {
 
     function onPickAnliegen(nextKey) {
         setAnliegen(nextKey);
+        resetNotices();
 
-        // wenn Workshops: event param behalten (falls vorhanden), sonst löschen
         if (nextKey !== "workshops-events-specials") {
             setSelectedEvent("");
             replaceQuery({ anliegen: nextKey, event: "" });
@@ -247,25 +326,19 @@ export default function ContactForm() {
 
     function onChange(e) {
         const { name, value, type, checked } = e.target;
+        resetNotices();
         setForm((prev) => ({
             ...prev,
             [name]: type === "checkbox" ? checked : value,
         }));
     }
 
-    // Dropdown Change (Event)
     function onPickEvent(e) {
         const slug = e.target.value;
+        resetNotices();
         setSelectedEvent(slug);
-
-        // in URL spiegeln
         replaceQuery({ event: slug });
-
-        // optional: im form-state speichern (für später Mail/Subject)
-        setForm((prev) => ({
-            ...prev,
-            event: slug,
-        }));
+        setForm((prev) => ({ ...prev, event: slug }));
     }
 
     const dynamicFields = FIELDS_BY_ANLIEGEN[anliegen] || [];
@@ -275,21 +348,130 @@ export default function ContactForm() {
         return events.find((ev) => ev.slug === selectedEvent) || null;
     }, [events, selectedEvent]);
 
-    function onSubmit(e) {
+    async function onSubmit(e) {
         e.preventDefault();
+        if (isSubmitting) return;
 
-        const payload = {
-            anliegen,
-            selectedEvent: selectedEventObj ? { slug: selectedEventObj.slug, title: selectedEventObj.title } : null,
-            ...form,
-        };
+        setIsSubmitting(true);
+        setButtonMode("sending");
+        setSubmitError("");
+        setSubmitSuccess(false);
+        clearTimers();
 
-        console.log("SUBMIT", payload);
-        alert("Danke! Formular wurde (demo) abgeschickt.");
+        try {
+            const fd = new FormData();
+
+            fd.set("anliegen", anliegen);
+            fd.set("vorname", form.vorname);
+            fd.set("nachname", form.nachname);
+            fd.set("email", form.email);
+            fd.set("telefon", form.telefon || "");
+            fd.set("kurzbeschreibung", form.kurzbeschreibung);
+            fd.set("verfuegbarkeit", form.verfuegbarkeit || "");
+            fd.set("consent", form.consent ? "true" : "false");
+            fd.set("newsletter", form.newsletter ? "true" : "false");
+
+            if (selectedEvent) fd.set("eventSlug", selectedEvent);
+
+            Object.entries(form).forEach(([k, v]) => {
+                if (
+                    [
+                        "vorname",
+                        "nachname",
+                        "email",
+                        "telefon",
+                        "kurzbeschreibung",
+                        "verfuegbarkeit",
+                        "consent",
+                        "newsletter",
+                    ].includes(k)
+                )
+                    return;
+                if (v === undefined || v === null) return;
+                if (typeof v === "string" && v.trim() === "") return;
+                fd.set(k, String(v));
+            });
+
+            const fileInput = e.currentTarget.querySelector('input[type="file"][name="datei"]');
+            if (fileInput?.files?.[0]) fd.set("datei", fileInput.files[0]);
+
+            const res = await fetch("/api/kontakt", { method: "POST", body: fd });
+            const json = await res.json();
+
+            if (!res.ok || !json.ok) {
+                setSubmitError(json?.error || "Fehler beim Senden. Bitte versuche es erneut.");
+                setIsSubmitting(false);
+                setButtonMode("idle");
+                // Banner anzeigen + hinscrollen
+                requestAnimationFrame(scrollToNotice);
+                return;
+            }
+
+            // ✅ success
+            setSubmitSuccess(true);
+            setButtonMode("sent");
+            setIsSubmitting(false);
+
+            // reset form
+            setForm({
+                vorname: "",
+                nachname: "",
+                email: "",
+                telefon: "",
+                kurzbeschreibung: "",
+                verfuegbarkeit: "",
+                consent: false,
+                newsletter: false,
+            });
+            setSelectedEvent("");
+            replaceQuery({ event: "" });
+
+            // hinscrollen
+            requestAnimationFrame(scrollToNotice);
+
+            // auto-hide success nach 8s
+            hideSuccessTimer.current = setTimeout(() => setSubmitSuccess(false), 8000);
+
+            // button nach 1.6s wieder normal
+            resetButtonTimer.current = setTimeout(() => setButtonMode("idle"), 1600);
+        } catch (err) {
+            console.error(err);
+            setSubmitError("Fehler beim Senden. Bitte versuche es erneut.");
+            setIsSubmitting(false);
+            setButtonMode("idle");
+            requestAnimationFrame(scrollToNotice);
+        }
     }
 
     return (
         <form onSubmit={onSubmit} className="space-y-10">
+            {/* Notices Anchor */}
+            <div ref={noticeRef} />
+
+            <AnimatePresence initial={false}>
+                {submitSuccess ? (
+                    <Notice
+                        key="success"
+                        type="success"
+                        title="Danke! Deine Nachricht wurde gesendet."
+                        onClose={() => setSubmitSuccess(false)}
+                    >
+                        Wir melden uns zeitnah bei dir mit den nächsten Schritten.
+                    </Notice>
+                ) : null}
+
+                {submitError ? (
+                    <Notice
+                        key="error"
+                        type="error"
+                        title="Das hat leider nicht geklappt."
+                        onClose={() => setSubmitError("")}
+                    >
+                        {submitError}
+                    </Notice>
+                ) : null}
+            </AnimatePresence>
+
             {/* Anliegen */}
             <div>
                 <div className="text-lg font-semibold">Anliegen</div>
@@ -303,8 +485,9 @@ export default function ContactForm() {
                                     key={a.key}
                                     type="button"
                                     onClick={() => onPickAnliegen(a.key)}
+                                    disabled={isSubmitting}
                                     className={[
-                                        "px-4 py-2 rounded-full border text-sm transition",
+                                        "px-4 py-2 rounded-full border text-sm transition disabled:opacity-60",
                                         active
                                             ? "border-black/30 bg-black text-white"
                                             : "border-black/15 bg-white hover:bg-black/5",
@@ -323,8 +506,22 @@ export default function ContactForm() {
                 <div className="text-lg font-semibold">Kontaktdaten</div>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                    <Input label="Vorname" name="vorname" value={form.vorname} onChange={onChange} required />
-                    <Input label="Nachname" name="nachname" value={form.nachname} onChange={onChange} required />
+                    <Input
+                        label="Vorname"
+                        name="vorname"
+                        value={form.vorname}
+                        onChange={onChange}
+                        required
+                        disabled={isSubmitting}
+                    />
+                    <Input
+                        label="Nachname"
+                        name="nachname"
+                        value={form.nachname}
+                        onChange={onChange}
+                        required
+                        disabled={isSubmitting}
+                    />
                     <Input
                         label="E-Mail"
                         name="email"
@@ -332,6 +529,7 @@ export default function ContactForm() {
                         onChange={onChange}
                         placeholder="name@email.de"
                         required
+                        disabled={isSubmitting}
                     />
                     <Input
                         label="Telefon (optional)"
@@ -339,6 +537,7 @@ export default function ContactForm() {
                         value={form.telefon}
                         onChange={onChange}
                         placeholder="+49 …"
+                        disabled={isSubmitting}
                     />
                 </div>
             </div>
@@ -353,7 +552,7 @@ export default function ContactForm() {
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-3">
-                        {/* ✅ Workshop/Event Dropdown nur bei passendem Anliegen */}
+                        {/* Workshop/Event Dropdown */}
                         {anliegen === "workshops-events-specials" ? (
                             <div className="md:col-span-3">
                                 <Select
@@ -361,9 +560,9 @@ export default function ContactForm() {
                                     name="event"
                                     value={selectedEvent}
                                     onChange={onPickEvent}
+                                    disabled={isSubmitting}
                                 >
                                     <option value="">Bitte auswählen…</option>
-
                                     {eventsLoading ? <option value="">Lade Events…</option> : null}
                                     {eventsError ? <option value="">{eventsError}</option> : null}
 
@@ -384,7 +583,6 @@ export default function ContactForm() {
                                         : null}
                                 </Select>
 
-                                {/* kleines Preview */}
                                 {selectedEventObj ? (
                                     <div className="mt-2 text-xs text-black/60">
                                         Ausgewählt: <span className="font-medium">{selectedEventObj.title}</span>
@@ -401,6 +599,7 @@ export default function ContactForm() {
                                 value={form[f.name] || ""}
                                 onChange={onChange}
                                 placeholder=""
+                                disabled={isSubmitting}
                             />
                         ))}
                     </div>
@@ -417,6 +616,7 @@ export default function ContactForm() {
                     onChange={onChange}
                     placeholder="Ein paar Sätze reichen völlig…"
                     required
+                    disabled={isSubmitting}
                 />
             </div>
 
@@ -428,15 +628,18 @@ export default function ContactForm() {
                     value={form.verfuegbarkeit}
                     onChange={onChange}
                     placeholder="Zeitfenster / Rückruf bevorzugt"
+                    disabled={isSubmitting}
                 />
 
                 <label className="block">
                     <span className="block text-sm font-medium text-black/80">Dateien (optional)</span>
                     <input
-                        className="mt-2 block w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base"
+                        className="mt-2 block w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base disabled:opacity-60"
                         type="file"
                         name="datei"
                         accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={resetNotices}
+                        disabled={isSubmitting}
                     />
                     <div className="mt-2 text-xs text-black/60">Arztbriefe / Unterlagen (PDF/JPG/PNG, max. 10 MB)</div>
                 </label>
@@ -452,9 +655,14 @@ export default function ContactForm() {
                         onChange={onChange}
                         required
                         className="mt-1"
+                        disabled={isSubmitting}
                     />
                     <span className="text-black/70">
-                        Ich stimme der Speicherung meiner Angaben zur Kontaktaufnahme zu. (Datenschutz)
+                        Ich stimme der Speicherung meiner Angaben zur Kontaktaufnahme zu.{" "}
+                        <a className="underline" href="datenschutz">
+                            {" "}
+                            Datenschutz lesen
+                        </a>
                     </span>
                 </label>
 
@@ -465,6 +673,7 @@ export default function ContactForm() {
                         checked={form.newsletter}
                         onChange={onChange}
                         className="mt-1"
+                        disabled={isSubmitting}
                     />
                     <span className="text-black/70">
                         Ich möchte gelegentlich Infos zu Terminen &amp; Artikeln erhalten (Newsletter).
@@ -474,12 +683,27 @@ export default function ContactForm() {
 
             {/* Submit */}
             <div className="pt-2">
-                <button
+                <motion.button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-xl bg-[#A81E1E] px-6 py-3 text-white font-medium hover:opacity-90"
+                    disabled={isSubmitting}
+                    whileTap={!isSubmitting ? { scale: 0.99 } : undefined}
+                    className={[
+                        "inline-flex items-center justify-center gap-3 rounded-xl px-6 py-3 font-medium transition",
+                        "bg-[#A81E1E] text-white hover:opacity-90",
+                        isSubmitting ? "opacity-70 cursor-not-allowed" : "",
+                    ].join(" ")}
                 >
-                    Abschicken
-                </button>
+                    {buttonMode === "sending" ? (
+                        <>
+                            <Spinner />
+                            <span>Wird gesendet…</span>
+                        </>
+                    ) : buttonMode === "sent" ? (
+                        <span>Gesendet ✓</span>
+                    ) : (
+                        <span>Abschicken</span>
+                    )}
+                </motion.button>
             </div>
         </form>
     );
