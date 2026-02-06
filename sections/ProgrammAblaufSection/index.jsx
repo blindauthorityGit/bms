@@ -18,6 +18,28 @@ function StepCard({ topline, title, cardRef }) {
     );
 }
 
+function useMediaQuery(query) {
+    const [matches, setMatches] = React.useState(false);
+
+    React.useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const mql = window.matchMedia(query);
+        const onChange = () => setMatches(mql.matches);
+
+        onChange(); // initial
+        if (mql.addEventListener) mql.addEventListener("change", onChange);
+        else mql.addListener(onChange);
+
+        return () => {
+            if (mql.removeEventListener) mql.removeEventListener("change", onChange);
+            else mql.removeListener(onChange);
+        };
+    }, [query]);
+
+    return matches;
+}
+
 function buildSnakePath(points, midX) {
     // points: [{x,y}] in visual order 1..8 already “snaked”
     // We create: start above first -> down into center -> horizontals -> vertical drop at right -> etc.
@@ -73,6 +95,8 @@ export default function ProgrammAblaufSection({ data, className = "" }) {
 
     // dynamic line path
     const [pathD, setPathD] = useState("");
+
+    const isLg = useMediaQuery("(min-width: 1024px)");
 
     useLayoutEffect(() => {
         if (!gridRef.current) return;
@@ -209,14 +233,12 @@ export default function ProgrammAblaufSection({ data, className = "" }) {
                         className="grid gap-10"
                     >
                         {rows.map((row, rowIndex) => {
-                            // ✅ reverse second row (index 1), third row would be normal again, etc.
-                            const rowCards = rowIndex % 2 === 1 ? [...row].reverse() : row;
+                            // ✅ reverse ONLY on desktop (lg+)
+                            const rowCards = rowIndex % 2 === 1 && isLg ? [...row].reverse() : row;
 
                             return (
                                 <div key={rowIndex} className="grid gap-10 lg:grid-cols-4">
                                     {rowCards.map((c, idx) => {
-                                        // IMPORTANT: ref must map to original card index in the *original* array order.
-                                        // Since we reversed, we need to find the original index of this card object.
                                         const originalIndex = cards.indexOf(c);
 
                                         return (
