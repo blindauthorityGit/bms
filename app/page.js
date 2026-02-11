@@ -40,7 +40,6 @@ export default async function Page() {
             {data?.testimonials ? <TestimonialsSection data={data.testimonials} /> : null}
             <BlogSection data={data?.blogSection} />
             <div className="h-12"></div>
-
             <TextImageSection data={data.bereitSection} />
 
             {/* weitere Sections später */}

@@ -9,6 +9,7 @@ import DecoImageSection from "@/sections/DecoImageSection";
 import TestimonialsSection from "@/sections/TestimonialsSection";
 import BenefitsSection from "@/sections/BenefitsSection";
 import ProgrammAblaufSection from "@/sections/ProgrammAblaufSection";
+import VideoSection from "@/sections/VideoSection";
 
 export const revalidate = 60;
 
@@ -39,6 +40,7 @@ export default async function Page() {
             <BenefitsSection data={data.teilnahme} />
 
             <IconGridSection data={data.iconGridRef?.iconGrid} />
+            <VideoSection></VideoSection>
             <CtaSection data={data.cta} />
             {/* weitere Sections später */}
         </main>
