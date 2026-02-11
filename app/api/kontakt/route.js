@@ -264,13 +264,29 @@ export async function POST(req) {
 
         const transporter = buildTransport();
 
+        const DEV_MODE = String(process.env.DEV_MODE) === "true";
         const MAIL_FROM = process.env.MAIL_FROM;
-        const MAIL_TO = process.env.MAIL_TO;
-        const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || MAIL_TO;
+        const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO;
 
-        if (!MAIL_FROM || !MAIL_TO) {
-            throw new Error("MAIL_FROM/MAIL_TO missing in env.");
+        const DEV_MAIL_TO = process.env.DEV_MAIL_TO;
+        const LIVE_MAIL_TO = process.env.LIVE_MAIL_TO;
+
+        if (!MAIL_FROM) throw new Error("MAIL_FROM missing in env.");
+        if (!MAIL_REPLY_TO) throw new Error("MAIL_REPLY_TO missing in env.");
+        if (!DEV_MAIL_TO) throw new Error("DEV_MAIL_TO missing in env.");
+        if (!LIVE_MAIL_TO) throw new Error("LIVE_MAIL_TO missing in env.");
+
+        const ownerRecipients = (DEV_MODE ? DEV_MAIL_TO : LIVE_MAIL_TO)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        if (!ownerRecipients.length) {
+            throw new Error("No valid owner recipients resolved (DEV_MAIL_TO / LIVE_MAIL_TO).");
         }
+
+        // Optional: User-Bestätigung nur live
+        const SEND_USER_CONFIRMATION = String(process.env.SEND_USER_CONFIRMATION) === "true";
 
         const subjectOwner = `Kontaktformular: ${anliegenLabel(anliegen)} – ${vorname} ${nachname}`;
         const htmlOwner = buildOwnerHtml(data);
@@ -278,7 +294,7 @@ export async function POST(req) {
         // 1) Mail an Betreiber
         await transporter.sendMail({
             from: MAIL_FROM,
-            to: MAIL_TO,
+            to: ownerRecipients,
             replyTo: email || MAIL_REPLY_TO, // Antworten gehen an User
             subject: subjectOwner,
             html: htmlOwner,
