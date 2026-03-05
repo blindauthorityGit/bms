@@ -36,9 +36,9 @@ export default function KontaktPage() {
                                         <span className="font-semibold">E-Mail:</span>{" "}
                                         <a
                                             className="underline underline-offset-4 hover:opacity-80"
-                                            href="mailto:bsm-tanja-bauer@web.de"
+                                            href="mailto:kontakt@bodysoulmind.de"
                                         >
-                                            bsm-tanja-bauer@web.de
+                                            kontakt@bodysoulmind.de
                                         </a>
                                     </div>
                                 </div>
@@ -47,13 +47,7 @@ export default function KontaktPage() {
 
                         {/* Optionales Bild */}
                         <div className="relative overflow-hidden rounded-2xl bg-black/5 min-h-[240px] lg:min-h-[560px]">
-                            <Image
-                                src="/Entspannung.jpg"
-                                alt="Portrait / Praxis"
-                                fill
-                                className="object-cover"
-                                priority
-                            />
+                            <Image src="/Kontakt.jpg" alt="Portrait / Praxis" fill className="object-cover" priority />
                         </div>
                     </div>
                 </div>

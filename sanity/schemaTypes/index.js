@@ -4,6 +4,7 @@ import {ueberMich} from './documents/ueberMich'
 import {coaching} from './documents/coaching'
 import {programme} from './documents/programme'
 import {longevity} from './documents/longevity'
+import {yoga} from './documents/yoga'
 import {event} from './documents/event'
 import {schmerztherapie} from './documents/schmerztherapie'
 import {individuellesTraining} from './documents/individuellesTraining'
@@ -50,6 +51,11 @@ import {eventLocation} from './objects/eventLocation'
 import {eventPrice} from './objects/eventPrice'
 import {eventSignup} from './objects/eventSignup'
 
+// weekly schedule
+import {weeklySchedule} from './documents/weeklySchedule'
+import {courseItem} from './objects/courseItem'
+import {weeklyScheduleSection} from './objects/weeklyScheduleSection'
+
 export const schemaTypes = [
   // documents
   homePage,
@@ -67,6 +73,7 @@ export const schemaTypes = [
   mentalesCoaching,
   entspannung,
   ernaehrung,
+  yoga,
 
   // objects
   seo,
@@ -102,4 +109,8 @@ export const schemaTypes = [
   eventLocation,
   eventPrice,
   eventSignup,
+
+  courseItem,
+  weeklySchedule,
+  weeklyScheduleSection,
 ]
