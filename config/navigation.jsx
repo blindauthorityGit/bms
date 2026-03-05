@@ -14,6 +14,7 @@ export const NAV_ITEMS = [
         label: "PROGRAMME",
         href: "/programme",
         children: [
+            { label: "Yoga Kurse", href: "/yoga" },
             { label: "8-Wochen-Programm", href: "/8wochen" },
             { label: "1:1-Coaching", href: "/coaching" },
             { label: "Workshops & Events", href: "/events" },

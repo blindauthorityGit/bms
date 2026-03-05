@@ -25,6 +25,8 @@ export default (S) =>
                 .title('Longevity')
                 .child(S.document().schemaType('longevity').documentId('longevity')),
 
+              S.listItem().title('Yoga').child(S.document().schemaType('yoga').documentId('yoga')),
+
               S.listItem()
                 .title('Coaching')
                 .child(S.document().schemaType('coaching').documentId('coaching')),
@@ -77,6 +79,7 @@ export default (S) =>
             'mentalesCoaching',
             'entspannung',
             'ernaehrung',
+            'yoga',
           ].includes(listItem.getId()),
       ),
     ])

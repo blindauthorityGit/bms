@@ -1429,3 +1429,102 @@ export const EVENT_RELATED_QUERY = groq`
   }
 }
 `;
+
+export const WEEKLY_SCHEDULE_QUERY = groq`
+*[_type == "weeklySchedule"][0]{
+  _id,
+  title,
+  weekLabel,
+  note,
+
+  courses[]{
+    _key,
+    day,
+    title,
+    time,
+    description,
+    status
+  } | order(day asc)
+}
+`;
+
+export const YOGA_QUERY = `
+*[_type == "yoga"][0]{
+  title,
+  slug,
+  seo,
+
+  hero{
+    headline,
+    text,
+    buttonText,
+    buttonLink{
+      type,
+      internal,
+      external
+    },
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  },
+
+  section1{
+    ...,
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  },
+
+  section2{
+    ...,
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  },
+
+  section3{
+    ...,
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  },
+
+  section4{
+    ...,
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  },
+
+  section5{
+    ...,
+    image{
+      alt,
+      asset->{
+        _id,
+        url
+      }
+    }
+  }
+}
+`;
