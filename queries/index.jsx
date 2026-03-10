@@ -1297,7 +1297,11 @@ iconGridRef->{
 `;
 
 export const EVENTS_INDEX_QUERY = groq`
-*[_type == "event" && coalesce(isActive, true) == true]
+*[
+  _type == "event" &&
+  coalesce(isActive, true) == true &&
+  status == "published"
+]
 | order(isFeatured desc, dates[0].start asc, _createdAt desc) {
   _id,
   title,
@@ -1306,7 +1310,7 @@ export const EVENTS_INDEX_QUERY = groq`
   isFeatured,
   excerpt,
 
-  // "nächster Termin" fürs Listing (du kannst daraus Monat/Jahr + Uhrzeit bauen)
+  // nächster Termin fürs Listing
   "nextDate": dates[0]{
     start,
     end,

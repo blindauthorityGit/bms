@@ -16,6 +16,19 @@ export const event = defineType({
 
   fields: [
     defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Published', value: 'published'},
+          {title: 'Hidden', value: 'hidden'},
+          {title: 'Draft', value: 'draft'},
+        ],
+      },
+      initialValue: 'published',
+    }),
+    defineField({
       name: 'title',
       title: 'Titel',
       type: 'string',

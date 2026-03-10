@@ -8,14 +8,29 @@ import WaysSection from "@/sections/WaysSection";
 import DecoImageSection from "@/sections/DecoImageSection";
 import TestimonialsSection from "@/sections/TestimonialsSection";
 import BlogSection from "@/sections/BlogSection";
+import { buildMetadata } from "@/lib/seo/buildMetadata";
 
 export const revalidate = 60;
+
+export async function generateMetadata() {
+    const data = await sanityClient.fetch(HOME_PAGE_QUERY);
+
+    return buildMetadata({
+        seo: data?.seo,
+        title: data?.title || "Home",
+        pathname: "/",
+        siteName: "Body Soul Mind",
+        defaultTitle: "Body Soul Mind",
+        defaultDescription: "Ganzheitliche Begleitung für Körper, Geist und Wohlbefinden.",
+        defaultOgImage: "/og-default.jpg",
+    });
+}
 
 export default async function Page() {
     const data = await sanityClient.fetch(HOME_PAGE_QUERY);
 
     console.log(data);
-    console.log(data.blogSection.posts);
+    console.log(data?.blogSection?.posts);
 
     if (!data) {
         return (
