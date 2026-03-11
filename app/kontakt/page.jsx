@@ -38,7 +38,7 @@ export default function KontaktPage() {
                                             className="underline underline-offset-4 hover:opacity-80"
                                             href="mailto:kontakt@bodysoulmind.de"
                                         >
-                                            kontakt@bodysoulmind.de
+                                            kontakt@body-soul-mind.de
                                         </a>
                                     </div>
                                 </div>

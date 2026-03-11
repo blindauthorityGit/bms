@@ -54,7 +54,7 @@ export default function Footer() {
                                     className="underline underline-offset-4 hover:text-neutral-800"
                                     href="mailto:bsm-tanja-bauer@web.de"
                                 >
-                                    bsm-tanja-bauer@web.de
+                                    kontakt@body-soul-mind.de
                                 </a>
                             </div>
                         </div>
