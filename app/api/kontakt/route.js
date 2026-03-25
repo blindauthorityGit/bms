@@ -6,6 +6,13 @@ export const dynamic = "force-dynamic";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/jpg"]);
 
+// Spam-Schutz
+const MIN_SUBMIT_MS = 4000; // Formular darf nicht "zu schnell" abgeschickt werden
+const MAX_REQUESTS_PER_WINDOW = 6;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+const ipStore = new Map();
+
 function clean(v) {
     return String(v || "").trim();
 }
@@ -194,8 +201,128 @@ function buildTransport() {
     });
 }
 
+// ---------------------------
+// Spam-Schutz Helpers
+// ---------------------------
+
+function getClientIp(req) {
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    if (forwardedFor) return forwardedFor.split(",")[0].trim();
+
+    const realIp = req.headers.get("x-real-ip");
+    if (realIp) return realIp.trim();
+
+    return "unknown";
+}
+
+function isRateLimited(ip) {
+    const now = Date.now();
+    const entries = ipStore.get(ip) || [];
+    const validEntries = entries.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
+
+    validEntries.push(now);
+    ipStore.set(ip, validEntries);
+
+    return validEntries.length > MAX_REQUESTS_PER_WINDOW;
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(email));
+}
+
+function looksSpammy(str) {
+    const v = clean(str);
+    if (!v) return false;
+
+    // lange zufällige Zeichenketten ohne Leerzeichen
+    if (/[A-Za-z0-9]{20,}/.test(v)) return true;
+
+    // sehr lange Tokens ohne Leerzeichen
+    if (!/\s/.test(v) && v.length > 30) return true;
+
+    return false;
+}
+
+function failsSpamChecks(data) {
+    const {
+        website,
+        middleName,
+        formStartedAt,
+        formSubmittedAt,
+        vorname,
+        nachname,
+        email,
+        kurzbeschreibung,
+        beschwerden,
+        dauer,
+        arztinfo,
+        termin,
+        start,
+        praeferenz,
+        zeiten,
+        gesundheit,
+        ziel,
+        workshop,
+        personen,
+        yogaArt,
+        level,
+        thema,
+    } = data;
+
+    // Honeypots
+    if (clean(website)) return true;
+    if (clean(middleName)) return true;
+
+    // Timing check
+    const started = Number(formStartedAt || 0);
+    const submitted = Number(formSubmittedAt || 0);
+
+    if (!started || !submitted) return true;
+    if (submitted < started) return true;
+    if (submitted - started < MIN_SUBMIT_MS) return true;
+
+    // E-Mail
+    if (!isValidEmail(email)) return true;
+
+    // Mindestplausibilität
+    if (clean(vorname).length < 2) return true;
+    if (clean(nachname).length < 2) return true;
+    if (clean(kurzbeschreibung).length < 8) return true;
+
+    // sehr einfache Gibberish-/Spam-Erkennung
+    const suspiciousFields = [
+        vorname,
+        nachname,
+        kurzbeschreibung,
+        beschwerden,
+        dauer,
+        arztinfo,
+        termin,
+        start,
+        praeferenz,
+        zeiten,
+        gesundheit,
+        ziel,
+        workshop,
+        personen,
+        yogaArt,
+        level,
+        thema,
+    ];
+
+    if (suspiciousFields.some(looksSpammy)) return true;
+
+    return false;
+}
+
 export async function POST(req) {
     try {
+        const ip = getClientIp(req);
+
+        if (isRateLimited(ip)) {
+            return Response.json({ ok: false, error: "Zu viele Anfragen. Bitte kurz warten." }, { status: 429 });
+        }
+
         const formData = await req.formData();
 
         // Pflichtfelder
@@ -213,7 +340,7 @@ export async function POST(req) {
         if (!consent || String(consent) !== "true")
             return Response.json({ ok: false, error: "Consent required" }, { status: 400 });
 
-        // Sammle alle Felder (inkl. dynamischer)
+        // Sammle alle Felder (inkl. dynamischer + Spam-Schutz Felder)
         const data = {
             anliegen,
             vorname,
@@ -224,6 +351,13 @@ export async function POST(req) {
             kurzbeschreibung,
             newsletter: String(formData.get("newsletter")) === "true",
             eventSlug: clean(formData.get("eventSlug")),
+
+            // Spam-Schutz-Felder
+            website: clean(formData.get("website")),
+            middleName: clean(formData.get("middleName")),
+            formStartedAt: clean(formData.get("formStartedAt")),
+            formSubmittedAt: clean(formData.get("formSubmittedAt")),
+            pagePath: clean(formData.get("pagePath")),
 
             // dynamische felder (falls vorhanden)
             beschwerden: clean(formData.get("beschwerden")),
@@ -242,11 +376,16 @@ export async function POST(req) {
             thema: clean(formData.get("thema")),
         };
 
+        // Spam blocken
+        if (failsSpamChecks(data)) {
+            return Response.json({ ok: false, error: "Anfrage konnte nicht verarbeitet werden." }, { status: 400 });
+        }
+
         // Datei (optional)
         const file = formData.get("datei"); // name muss im input so heißen
         let attachment = null;
 
-        if (file && typeof file === "object" && "arrayBuffer" in file) {
+        if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
             if (file.size > MAX_FILE_SIZE) {
                 return Response.json({ ok: false, error: "File too large (max 10MB)" }, { status: 400 });
             }
@@ -302,16 +441,18 @@ export async function POST(req) {
         });
 
         // 2) Bestätigung an User
-        const subjectUser = `Bestätigung: Deine Anfrage bei bodysoulmind`;
-        const htmlUser = buildUserHtml(data);
+        if (SEND_USER_CONFIRMATION) {
+            const subjectUser = `Bestätigung: Deine Anfrage bei bodysoulmind`;
+            const htmlUser = buildUserHtml(data);
 
-        await transporter.sendMail({
-            from: MAIL_FROM,
-            to: email,
-            replyTo: MAIL_REPLY_TO,
-            subject: subjectUser,
-            html: htmlUser,
-        });
+            await transporter.sendMail({
+                from: MAIL_FROM,
+                to: email,
+                replyTo: MAIL_REPLY_TO,
+                subject: subjectUser,
+                html: htmlUser,
+            });
+        }
 
         return Response.json({ ok: true });
     } catch (err) {
